@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Copy pre-built uv binary for fast dependency management
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
