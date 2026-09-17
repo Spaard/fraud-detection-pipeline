@@ -1,0 +1,37 @@
+[project]
+name = "fraud-detection-pipeline"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Gaspard Baumelou", email = "gaspard.baumelou8@etu.univ-lorraine.fr" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "category-encoders>=2.11.1",
+    "matplotlib>=3.11.2",
+    "pandas>=3.0.5",
+    "pyarrow>=25.0.1",
+    "scikit-learn>=1.9.1",
+    "shap>=0.52.0",
+    "streamlit>=1.64.0",
+]
+
+[project.scripts]
+fraud-detection-pipeline = "fraud_detection_pipeline:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
