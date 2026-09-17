@@ -4,6 +4,8 @@ from src.data_loader import (
     calculate_fraud_metrics,
     filter_by_amount,
     load_transaction_data,
+    prepare_map_data,
+    train_fraud_model,
 )
 
 
@@ -18,8 +20,9 @@ def sample_data():
             "2022-01-01 12:00:00",
             "2022-01-01 13:00:00",
         ],
+        "counterparty_country_code": ["FR", "IE", "US", "FR"],
         "movement_amount_euros": [10.0, 50.0, 150.0, 500.0],
-        "is_fraud": [0, 0, 1, 0],
+        "is_fraud": [0, 0, 1, 1],
     })
 
 
@@ -48,8 +51,8 @@ def test_calculate_fraud_metrics_correct_values(sample_data):
     """Test fraud metrics calculation logic."""
     metrics = calculate_fraud_metrics(sample_data)
     assert metrics["total"] == 4
-    assert metrics["fraud_count"] == 1
-    assert metrics["fraud_rate"] == 0.25
+    assert metrics["fraud_count"] == 2
+    assert metrics["fraud_rate"] == 0.5
 
 
 def test_calculate_fraud_metrics_empty_df():
@@ -58,6 +61,30 @@ def test_calculate_fraud_metrics_empty_df():
     metrics = calculate_fraud_metrics(empty_df)
     assert metrics["total"] == 0
     assert metrics["fraud_rate"] == 0.0
+
+
+def test_prepare_map_data_valid_coords(sample_data):
+    """Test geographical aggregation for Pydeck mapping."""
+    geo_df = prepare_map_data(sample_data)
+    assert len(geo_df) == 2
+    assert "latitude" in geo_df.columns
+    assert "longitude" in geo_df.columns
+    assert "min_amount" in geo_df.columns
+    assert "max_amount" in geo_df.columns
+    assert set(geo_df["counterparty_country_code"]) == {"US", "FR"}
+
+
+def test_prepare_map_data_empty_df():
+    """Verify map preparation returns an empty DataFrame if no fraud exists."""
+    empty_df = pd.DataFrame(
+        columns=[
+            "is_fraud",
+            "counterparty_country_code",
+            "movement_amount_euros",
+        ]
+    )
+    geo_df = prepare_map_data(empty_df)
+    assert geo_df.empty
 
 
 def test_load_transaction_data_file_not_found():
@@ -79,3 +106,21 @@ def test_load_transaction_data_datetime_parsing(tmp_path):
 
     df = load_transaction_data(str(parquet_file))
     assert pd.api.types.is_datetime64_any_dtype(df["time_settled"])
+
+
+def test_train_fraud_model_execution():
+    """Test machine learning pipeline training and output shapes."""
+    dataset = pd.DataFrame({
+        "movement_amount_euros": [10.0, 50.0, 100.0, 200.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0],
+        "is_physical": [True, False, True, False, True, False, True, False, True, False],
+        "member_role": ["owner", "admin", "owner", "admin", "owner", "admin", "owner", "admin", "owner", "admin"],
+        "payment_method": ["online", "vpos", "online", "vpos", "online", "vpos", "online", "vpos", "online", "vpos"],
+        "counterparty_country_code": ["FR", "IE", "FR", "IE", "FR", "IE", "FR", "IE", "FR", "IE"],
+        "is_fraud": [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    })
+
+    pipeline, X_test, y_test = train_fraud_model(dataset)
+
+    assert pipeline is not None
+    assert len(X_test) > 0
+    assert len(y_test) > 0
